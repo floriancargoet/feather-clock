@@ -71,7 +71,7 @@ void Display::flush() {
   if (millis() % (2 * BLINK_DELAY) < BLINK_DELAY) {
     for (uint8_t i = 0; i < 4; i++) {
       if ((blinking >> i) & 1 == 1) {
-        writeDigitRaw(i < 2 ? i : i + 1, 0); // skip actual digit 2
+        writeDigitRaw(i, 0);
       }
     }
   }

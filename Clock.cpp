@@ -124,12 +124,50 @@ bool Clock::checkAlarmFile(uint8_t track) {
 void Clock::run() {
   input.update();
   Command c = input.getCommand();
+  alarmTransition(); // pre-emptive state change
   state = transition(state, c);
   if (c != NONE) {
     playButtonBeep();
   }
   render();
-  // TODO: play alarm tracks + blink corresponding dot
+}
+
+void Clock::alarmTransition() {
+  checkAlarm(settings.alarm1, ALARM_1, alarm1Stopped);
+  checkAlarm(settings.alarm2, ALARM_2, alarm2Stopped);
+}
+
+void Clock::checkAlarm(Alarm a, State ALARM_X, bool &stoppedFlag) {
+  // When reaching the time of an alarm, we emit the ALARM_X command. When the
+  // alarm is stopped by the user, if it's still the same time, we mustn't play
+  // it again. We set an alarmXStopped flag, which will be removed 1 min before
+  // ringing the next day.
+  DateTime now = rtc.now();
+  uint8_t hour = now.hour();
+  uint8_t minute = now.minute();
+  // If the song stopped itself, set the flag
+  if (state == ALARM_X && !stoppedFlag && player.stopped()) {
+    Serial.println("Track ended, stopping alarm");
+    stoppedFlag = true;
+    state = DISPLAY_TIME;
+  }
+  if (
+    stoppedFlag &&
+    a.hour * 60 + a.minute == hour * 60 + minute + 1
+  ) {
+    stoppedFlag = false;
+  }
+  if (
+    a.enabled && // TODO: week-end check
+    !stoppedFlag &&
+    state != ALARM_X &&
+    a.hour == hour &&
+    a.minute == minute
+  ) {
+    state = ALARM_X;
+    Serial.println("Starting alarm");
+    playAlarm(a.track);
+  }
 }
 
 // copy time locally when editing it so that the RTC doesn't modify it too
@@ -207,80 +245,92 @@ void Clock::render() {
 
     // Set time
     case SET_HOURS:
-      display.setBlinking(DIGIT_1 | DIGIT_2);
+      display.setBlinking(BLINK_DIGIT_1 | BLINK_DIGIT_2);
       display.printTime(hour, minute);
       break;
     case SET_MINUTES:
-      display.setBlinking(DIGIT_3 | DIGIT_4);
+      display.setBlinking(BLINK_DIGIT_3 | BLINK_DIGIT_4);
       display.printTime(hour, minute);
       break;
 
     // Set date
     case SET_DAY:
-      display.setBlinking(DIGIT_1 | DIGIT_2);
+      display.setBlinking(BLINK_DIGIT_1 | BLINK_DIGIT_2);
       display.printDate((day + 1), (month + 1));
       break;
     case SET_MONTH:
-      display.setBlinking(DIGIT_3 | DIGIT_4);
+      display.setBlinking(BLINK_DIGIT_3 | BLINK_DIGIT_4);
       display.printDate((day + 1), (month + 1));
       break;
     case SET_YEAR:
-      display.setBlinking(DIGIT_1 | DIGIT_2 | DIGIT_3 | DIGIT_4);
+      display.setBlinking(BLINK_DIGIT_1 | BLINK_DIGIT_2 | BLINK_DIGIT_3 | BLINK_DIGIT_4);
       display.print(year + 2000);
       break;
 
     // Set alarm 1
     case SET_ENABLED_1:
       display.setDots(LEFT_COLON_UPPER);
-      display.setBlinking(DIGIT_3 | DIGIT_4);
+      display.setBlinking(BLINK_DIGIT_3 | BLINK_DIGIT_4);
       display.printAlarmEnabled(1, settings.alarm1.enabled);
       break;
     case SET_HOURS_1:
       display.setDots(LEFT_COLON_UPPER);
-      display.setBlinking(DIGIT_1 | DIGIT_2);
+      display.setBlinking(BLINK_DIGIT_1 | BLINK_DIGIT_2);
       display.printTime(settings.alarm1.hour, settings.alarm1.minute);
       break;
     case SET_MINUTES_1:
       display.setDots(LEFT_COLON_UPPER);
-      display.setBlinking(DIGIT_3 | DIGIT_4);
+      display.setBlinking(BLINK_DIGIT_3 | BLINK_DIGIT_4);
       display.printTime(settings.alarm1.hour, settings.alarm1.minute);
       break;
     case SET_WEEKEND_1:
       display.setDots(LEFT_COLON_UPPER);
-      display.setBlinking(DIGIT_3 | DIGIT_4);
+      display.setBlinking(BLINK_DIGIT_3 | BLINK_DIGIT_4);
       display.printAlarmWeekEnd(1, settings.alarm1.weekend);
       break;
     case SET_TRACK_1:
       display.setDots(LEFT_COLON_UPPER);
-      display.setBlinking(DIGIT_4);
+      display.setBlinking(BLINK_DIGIT_4);
       display.printAlarmTrack(1, settings.alarm1.track + 1);
       break;
 
     // Set alarm 2
     case SET_ENABLED_2:
       display.setDots(LEFT_COLON_UPPER);
-      display.setBlinking(DIGIT_3 | DIGIT_4);
+      display.setBlinking(BLINK_DIGIT_3 | BLINK_DIGIT_4);
       display.printAlarmEnabled(2, settings.alarm2.enabled);
       break;
     case SET_HOURS_2:
       display.setDots(LEFT_COLON_UPPER);
-      display.setBlinking(DIGIT_1 | DIGIT_2);
+      display.setBlinking(BLINK_DIGIT_1 | BLINK_DIGIT_2);
       display.printTime(settings.alarm2.hour, settings.alarm2.minute);
       break;
     case SET_MINUTES_2:
       display.setDots(LEFT_COLON_UPPER);
-      display.setBlinking(DIGIT_3 | DIGIT_4);
+      display.setBlinking(BLINK_DIGIT_3 | BLINK_DIGIT_4);
       display.printTime(settings.alarm2.hour, settings.alarm2.minute);
       break;
     case SET_WEEKEND_2:
       display.setDots(LEFT_COLON_UPPER);
-      display.setBlinking(DIGIT_3 | DIGIT_4);
+      display.setBlinking(BLINK_DIGIT_3 | BLINK_DIGIT_4);
       display.printAlarmWeekEnd(2, settings.alarm2.weekend);
       break;
     case SET_TRACK_2:
       display.setDots(LEFT_COLON_UPPER);
-      display.setBlinking(DIGIT_4);
+      display.setBlinking(BLINK_DIGIT_4);
       display.printAlarmTrack(2, settings.alarm2.track + 1);
+      break;
+
+    // Ringing alarms
+    case ALARM_1:
+      display.setBlinking(BLINK_DOTS);
+      display.setDots(LEFT_COLON_UPPER);
+      display.printTime(now.hour(), now.minute());
+      break;
+    case ALARM_2:
+      display.setBlinking(BLINK_DOTS);
+      display.setDots(LEFT_COLON_LOWER);
+      display.printTime(now.hour(), now.minute());
       break;
   }
 
@@ -583,6 +633,20 @@ State Clock::transition(State s, Command c) {
         settings.alarm2.track = (settings.alarm2.track + (alarmTrackCount - 1)) % alarmTrackCount; // add 8 to ensure positive result
         // preview
         playAlarm(settings.alarm2.track);
+      }
+      break;
+    case ALARM_1:
+      if (c == STOP) {
+        player.stopPlaying();
+        alarm1Stopped = true;
+        next = DISPLAY_TIME;
+      }
+      break;
+    case ALARM_2:
+      if (c == STOP) {
+        player.stopPlaying();
+        alarm2Stopped = true;
+        next = DISPLAY_TIME;
       }
       break;
     default:

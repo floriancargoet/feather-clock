@@ -58,12 +58,15 @@ class Clock {
     // Alarms/Settings
     Settings settings;
     uint8_t alarmTrackCount;
+    bool alarm1Stopped = false;
+    bool alarm2Stopped = false;
     void writeSettings();
     void applyVolume();
     void playButtonBeep();
     String getAlarmFileName(uint8_t track);
     bool checkAlarmFile(uint8_t track);
     void playAlarm(uint8_t track);
+    void checkAlarm(Alarm a, State ALARM_X, bool &stoppedFlag);
     bool noInputDuringMS(unsigned long delay);
 
     // Init
@@ -79,6 +82,7 @@ class Clock {
 
     void render();
     State transition(State s, Command c);
+    void alarmTransition();
 };
 
 #endif

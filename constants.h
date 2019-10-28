@@ -11,10 +11,11 @@
 #define LEFT_COLON_LOWER 0x08
 #define LEFT_COLON_UPPER 0x04
 #define DECIMAL_POINT    0x10
-#define DIGIT_1        0b0001
-#define DIGIT_2        0b0010
-#define DIGIT_3        0b0100
-#define DIGIT_4        0b1000
+#define BLINK_DIGIT_1    0b00001
+#define BLINK_DIGIT_2    0b00010
+#define BLINK_DOTS       0b00100
+#define BLINK_DIGIT_3    0b01000
+#define BLINK_DIGIT_4    0b10000
 
 #define BLINK_DELAY 300
 
