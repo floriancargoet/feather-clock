@@ -4,7 +4,6 @@
  * TODO v1:
  * - nap mode
  * - week-end when triggering alarms
- * - BUG: blinking
  *
  * TODO v2:
  * - brightness control? photoresistor?

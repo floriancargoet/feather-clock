@@ -69,7 +69,7 @@ void Display::printErr(uint8_t errorCode) {
 void Display::flush() {
   // blinking
   if (millis() % (2 * BLINK_DELAY) < BLINK_DELAY) {
-    for (uint8_t i = 0; i < 4; i++) {
+    for (uint8_t i = 0; i <= 4; i++) {
       if ((blinking >> i) & 1 == 1) {
         writeDigitRaw(i, 0);
       }
