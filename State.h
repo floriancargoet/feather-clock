@@ -22,8 +22,12 @@ typedef enum  {
     SET_MINUTES_2,
     SET_WEEKEND_2,
     SET_TRACK_2,
-    ALARM_1,
-    ALARM_2
+    RINGING_ALARM_1,
+    RINGING_ALARM_2,
+    RINGING_NAP,
+    DISPLAY_NAP_INTRO,
+    SET_NAP,
+    DISPLAY_NAP
 } State;
 
 #endif

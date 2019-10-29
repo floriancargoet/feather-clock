@@ -2,18 +2,22 @@
 #define Input_h
 
 #include <Arduino.h>
+#include "constants.h";
 #include "Command.h";
 
 typedef enum {
   NOTHING,
   CLICKED,
-  LONG_PRESSED
+  LONG_PRESS_START,
+  LONG_PRESS_HOLD,
+  LONG_PRESS_STOP,
 } EventType;
 
 class Event {
   public:
     EventType type;
     uint8_t pin;
+    unsigned long duration;
 };
 
 class Input {
@@ -34,6 +38,7 @@ class Input {
     uint8_t debouncedState[20] = {};
     uint8_t lastRealState[20] = {};
     unsigned long lastDebounceTime[20] = {};
+    bool longPressed[20] = {}; // all false
     EventType getEventTypeForPin(uint8_t pin);
 };
 

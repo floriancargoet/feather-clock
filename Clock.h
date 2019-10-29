@@ -38,7 +38,7 @@ class Clock {
     // Input/output
     Display display;
     RTC_DS3231 rtc;
-    Adafruit_VS1053_FilePlayer player = Adafruit_VS1053_FilePlayer(VS1053_RESET, VS1053_CS, VS1053_DCS, VS1053_DREQ, CARDCS);
+    Adafruit_VS1053_FilePlayer player = Adafruit_VS1053_FilePlayer(0, 0, 0, 0, 0); // reinstantiated after SD init
     Input input;
 
     // Time settings
@@ -69,7 +69,15 @@ class Clock {
     void checkAlarm(Alarm a, State ALARM_X, bool &stoppedFlag);
     bool noInputDuringMS(unsigned long delay);
 
+    // Nap
+    TimeSpan napTS;
+    DateTime napTime;
+    void playNap();
+    void checkNap();
+
     // Init
+    uint8_t sdPin;
+    void die(char* msg, uint8_t errCode);
     void initDisplay();
     void initRTC();
     void initSound();

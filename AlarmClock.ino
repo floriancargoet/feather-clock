@@ -2,16 +2,16 @@
 
 /*
  * TODO v1:
- * - nap mode
- * - long press
+ * - ?
  *
  * TODO v2:
  * - brightness control? photoresistor?
  * - handle DST?
+ * - > 99 min naps?
  *
  * Edge cases:
  * - simultaneous alarms
- * - alarm track overlaps over alarm
+ * - alarm track overlaps next alarm
  * - alarm track > 24h
  * - nap + alarms
  * - multiple buttons at once

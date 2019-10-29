@@ -1,5 +1,18 @@
 #include "Display.h"
 
+void Display::printBoot() {
+  writeDigitRaw(0, LETTER_b);
+  writeDigitRaw(1, LETTER_o);
+  writeDigitRaw(3, LETTER_o);
+  writeDigitRaw(4, LETTER_t);
+}
+
+void Display::printNapIntro() {
+  writeDigitRaw(0, LETTER_n);
+  writeDigitRaw(1, LETTER_A);
+  writeDigitRaw(3, LETTER_P);
+}
+
 // Print without the first leading zero 01:23 => 1:23, 00:00 => 0:00
 void Display::printTime(uint8_t hour, uint8_t minute) {
   uint8_t digits[] = {};

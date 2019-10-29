@@ -7,7 +7,8 @@ typedef enum {
   SET,
   UP,
   DOWN,
-  STOP
+  STOP_ADD_5,
+  NAP
 } Command;
 
 #endif

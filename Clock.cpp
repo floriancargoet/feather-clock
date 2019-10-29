@@ -4,6 +4,13 @@ static const uint8_t daysInMonth [] = { 31,28,31,30,31,30,31,31,30,31,30,31 };
 
 FlashStorage(flash_settings, Settings);
 
+void Clock::die(char* msg, uint8_t errCode) {
+   Serial.println(msg);
+   display.printErr(errCode);
+   display.flush();
+   while (1);
+}
+
 void Clock::init() {
   Serial.begin(9600);
   // while (!Serial);
@@ -20,20 +27,22 @@ void Clock::init() {
   Serial.println("Init SD OK");
   initSound();
   Serial.println("Init Sound OK");
+  // disable the power led if everything went well
+  pinMode(POWER_LED, OUTPUT);
+  digitalWrite(POWER_LED, LOW);
   Serial.println("Full init OK");
 }
 
 void Clock::initDisplay() {
-  display.begin(0x70); // Code hangs here after a reset. The Display is not resetted correctly
+  display.begin(0x70); // Sometimes code hangs here after a reset. The Display is not resetted correctly
   display.setBrightness(0);
+  display.printBoot();
+  display.flush();
 }
 
 void Clock::initRTC() {
    if (!rtc.begin()) {
-     Serial.println("Failed to init RTC");
-     display.printErr(1);
-     display.flush();
-     while (1);
+    die("Failed to init RTC", 1);
    }
 
   if (rtc.lostPower()) {
@@ -55,11 +64,9 @@ void Clock::initFlashSettings() {
 }
 
 void Clock::initSound() {
+  player = Adafruit_VS1053_FilePlayer(VS1053_RESET, VS1053_CS, VS1053_DCS, VS1053_DREQ, sdPin);
   if (! player.begin()) {
-     Serial.println("Failed to init player");
-     display.printErr(2);
-     display.flush();
-     while (1);
+    die("Failed to init player", 2);
   }
 
   // If DREQ is on an interrupt pin we can do background audio playing
@@ -70,20 +77,27 @@ void Clock::initSound() {
 }
 
 void Clock::initSD() {
-  if (!SD.begin(CARDCS)) {
-     Serial.println("Failed to init SD card");
-    display.printErr(3);
-    display.flush();
-    while (1);
+  sdPin = CARD_CS;
+  pinMode(ALT_CARD_DETECT, INPUT_PULLUP);
+  if (digitalRead(ALT_CARD_DETECT)) {
+    sdPin = ALT_CARD_CS;
+  }
+  if (!SD.begin(sdPin)) {
+    die("Failed to init SD card", 3);
   }
   // Check files existence
   if (!SD.exists(TRACK_BUTTON_PRESS)) {
-     Serial.println("Couldn't find " TRACK_BUTTON_PRESS);
+    Serial.println("Couldn't find " TRACK_BUTTON_PRESS);
+  }
+  if (!SD.exists(TRACK_NAP)) {
+    Serial.println("Couldn't find " TRACK_NAP);
+    die("Missing " TRACK_NAP, 4);
   }
   // Check consecutive alarm track files
   uint8_t i = 0;
   while (checkAlarmFile(i) && i < 8) i++;
   alarmTrackCount = i;
+  Serial.print("Alarm tracks found: ");
   Serial.println(alarmTrackCount);
 }
 
@@ -100,9 +114,8 @@ void Clock::applyVolume() {
 }
 
 void Clock::playButtonBeep() {
-  if (player.stopped()) {
-    player.startPlayingFile(TRACK_BUTTON_PRESS);
-  }
+  player.stopPlaying();
+  player.startPlayingFile(TRACK_BUTTON_PRESS);
 }
 
 String Clock::getAlarmFileName(uint8_t track) {
@@ -118,6 +131,11 @@ void Clock::playAlarm(uint8_t track) {
   String file = getAlarmFileName(track);
   player.stopPlaying();
   player.startPlayingFile(file.c_str());
+}
+
+void Clock::playNap() {
+  player.stopPlaying();
+  player.startPlayingFile(TRACK_NAP);
 }
 
 bool Clock::checkAlarmFile(uint8_t track) {
@@ -136,8 +154,24 @@ void Clock::run() {
 }
 
 void Clock::alarmTransition() {
-  checkAlarm(settings.alarm1, ALARM_1, alarm1Stopped);
-  checkAlarm(settings.alarm2, ALARM_2, alarm2Stopped);
+  checkAlarm(settings.alarm1, RINGING_ALARM_1, alarm1Stopped);
+  checkAlarm(settings.alarm2, RINGING_ALARM_2, alarm2Stopped);
+  checkNap();
+}
+
+void Clock::checkNap() {
+  if (state == RINGING_NAP && player.stopped()) {
+    // track stopped, auto exit
+    state = DISPLAY_TIME;
+  }
+  // only check nap in nap mode
+  if (state == DISPLAY_NAP) {
+    int32_t remaining = (napTime - rtc.now()).totalseconds();
+    if (remaining <= 0) {
+      state = RINGING_NAP;
+      playNap();
+    }
+  }
 }
 
 void Clock::checkAlarm(Alarm a, State ALARM_X, bool &stoppedFlag) {
@@ -233,6 +267,7 @@ void Clock::render() {
       break;
     case DISPLAY_TIME:
       display.setDots(
+        CENTER_COLON |
         (settings.alarm1.enabled ? LEFT_COLON_UPPER : 0) |
         (settings.alarm2.enabled ? LEFT_COLON_LOWER : 0)
       );
@@ -252,10 +287,12 @@ void Clock::render() {
 
     // Set time
     case SET_HOURS:
+      display.setDots(CENTER_COLON);
       display.setBlinking(BLINK_DIGIT_1 | BLINK_DIGIT_2);
       display.printTime(hour, minute);
       break;
     case SET_MINUTES:
+      display.setDots(CENTER_COLON);
       display.setBlinking(BLINK_DIGIT_3 | BLINK_DIGIT_4);
       display.printTime(hour, minute);
       break;
@@ -281,12 +318,12 @@ void Clock::render() {
       display.printAlarmEnabled(1, settings.alarm1.enabled);
       break;
     case SET_HOURS_1:
-      display.setDots(LEFT_COLON_UPPER);
+      display.setDots(LEFT_COLON_UPPER | CENTER_COLON);
       display.setBlinking(BLINK_DIGIT_1 | BLINK_DIGIT_2);
       display.printTime(settings.alarm1.hour, settings.alarm1.minute);
       break;
     case SET_MINUTES_1:
-      display.setDots(LEFT_COLON_UPPER);
+      display.setDots(LEFT_COLON_UPPER | CENTER_COLON);
       display.setBlinking(BLINK_DIGIT_3 | BLINK_DIGIT_4);
       display.printTime(settings.alarm1.hour, settings.alarm1.minute);
       break;
@@ -308,12 +345,12 @@ void Clock::render() {
       display.printAlarmEnabled(2, settings.alarm2.enabled);
       break;
     case SET_HOURS_2:
-      display.setDots(LEFT_COLON_UPPER);
+      display.setDots(LEFT_COLON_UPPER | CENTER_COLON);
       display.setBlinking(BLINK_DIGIT_1 | BLINK_DIGIT_2);
       display.printTime(settings.alarm2.hour, settings.alarm2.minute);
       break;
     case SET_MINUTES_2:
-      display.setDots(LEFT_COLON_UPPER);
+      display.setDots(LEFT_COLON_UPPER | CENTER_COLON);
       display.setBlinking(BLINK_DIGIT_3 | BLINK_DIGIT_4);
       display.printTime(settings.alarm2.hour, settings.alarm2.minute);
       break;
@@ -329,15 +366,41 @@ void Clock::render() {
       break;
 
     // Ringing alarms
-    case ALARM_1:
+    case RINGING_ALARM_1:
       display.setBlinking(BLINK_DOTS);
-      display.setDots(LEFT_COLON_UPPER);
+      display.setDots(LEFT_COLON_UPPER | CENTER_COLON);
       display.printTime(now.hour(), now.minute());
       break;
-    case ALARM_2:
+    case RINGING_ALARM_2:
       display.setBlinking(BLINK_DOTS);
-      display.setDots(LEFT_COLON_LOWER);
+      display.setDots(LEFT_COLON_LOWER | CENTER_COLON);
       display.printTime(now.hour(), now.minute());
+      break;
+
+    // Nap
+    case DISPLAY_NAP_INTRO:
+      display.printNapIntro();
+      break;
+    case SET_NAP: {
+      uint8_t minutes = napTS.totalseconds() / 60; // ts.minutes() would not go over 59
+      uint8_t seconds = napTS.seconds();
+      display.setDots(CENTER_COLON);
+      display.setBlinking(BLINK_DIGIT_1 | BLINK_DIGIT_2 | BLINK_DIGIT_3 | BLINK_DIGIT_4);
+      display.printTime(minutes, seconds);
+      break;
+    }
+    case DISPLAY_NAP: {
+      TimeSpan ts = napTime - now;
+      uint8_t minutes = ts.totalseconds() / 60; // ts.minutes() would not go over 59
+      uint8_t seconds = ts.seconds();
+      display.setDots(CENTER_COLON);
+      display.printTime(minutes, seconds);
+      break;
+    }
+    case RINGING_NAP:
+      display.setDots(CENTER_COLON);
+      display.setBlinking(BLINK_DOTS | BLINK_DIGIT_1 | BLINK_DIGIT_2 | BLINK_DIGIT_3 | BLINK_DIGIT_4);
+      display.printTime(0, 0);
       break;
   }
 
@@ -380,6 +443,10 @@ State Clock::transition(State s, Command c) {
       }
       if (c == UP | c == DOWN) {
         next = DISPLAY_VOLUME;
+      }
+      if (c == NAP) {
+        next = DISPLAY_NAP_INTRO;
+        napTS = TimeSpan(NAP_INCREMENT);
       }
       break;
     case SET_HOURS:
@@ -654,18 +721,56 @@ State Clock::transition(State s, Command c) {
         playAlarm(settings.alarm2.track);
       }
       break;
-    case ALARM_1:
-      if (c == STOP) {
+    case RINGING_ALARM_1:
+      if (c == STOP_ADD_5) {
         player.stopPlaying();
         alarm1Stopped = true;
         next = DISPLAY_TIME;
       }
       break;
-    case ALARM_2:
-      if (c == STOP) {
+    case RINGING_ALARM_2:
+      if (c == STOP_ADD_5) {
         player.stopPlaying();
         alarm2Stopped = true;
         next = DISPLAY_TIME;
+      }
+      break;
+    case RINGING_NAP:
+      if (c == STOP_ADD_5) {
+        player.stopPlaying();
+        next = DISPLAY_TIME;
+      }
+      break;
+    case DISPLAY_NAP_INTRO:
+      if (noInputDuringMS(NAP_INTRO_DELAY)) {
+        next = SET_NAP;
+      }
+      break;
+    case SET_NAP:
+      if (c == NAP) {
+        next = DISPLAY_TIME;
+      }
+      if (c == STOP_ADD_5) {
+        napTS = napTS + TimeSpan(NAP_INCREMENT);
+        if (napTS.totalseconds() >= 100 * 60) {
+          napTS = TimeSpan(99 * 60 + 59);
+        }
+      }
+      if (noInputDuringMS(NAP_SET_DELAY)) {
+        next = DISPLAY_NAP;
+        napTime = rtc.now() + napTS;
+      }
+      break;
+    case DISPLAY_NAP:
+      if (c == NAP) {
+        next = DISPLAY_TIME;
+      }
+      if (c == STOP_ADD_5) {
+        DateTime now = rtc.now();
+        napTime = napTime + TimeSpan(NAP_INCREMENT);
+        if ((napTime - now).totalseconds() >= 100 * 60) {
+          napTime = now + TimeSpan(99 * 60 + 59);
+        }
       }
       break;
     default:

@@ -31,17 +31,24 @@ uint8_t Input::debouncedRead(uint8_t pin) {
 }
 
 EventType Input::getEventTypeForPin(uint8_t pin) {
+  bool wasLongPressed = longPressed[pin];
   bool wasPressed = !debouncedState[pin];// pullup
   bool isPressed = !debouncedRead(pin); // pullup
 
-  if (wasPressed && !isPressed) {
+  if (wasPressed && !isPressed && !wasLongPressed) {
     return CLICKED;
   }
-  if (isPressed && (millis() - lastDebounceTime[pin] > 2000)) {
-    Serial.println("long press");
-  // TODO: finish long press, don't trigger click at the end
-    // needs longPressing[] bools
-    // trigger LONG_PRESS events with duration
+  if (wasPressed && !isPressed && wasLongPressed) {
+    longPressed[pin] = false;
+    return LONG_PRESS_STOP;
+  }
+
+  if (isPressed && (millis() - lastDebounceTime[pin] > LONG_PRESS_DELAY)) {
+    longPressed[pin] = true;
+    if (!wasLongPressed) {
+      return LONG_PRESS_START;
+    }
+    return LONG_PRESS_HOLD;
   }
   return NOTHING;
 }
@@ -49,6 +56,7 @@ EventType Input::getEventTypeForPin(uint8_t pin) {
 void Input::update() {
   event.type = NOTHING;
   event.pin = -1;
+  event.duration = 0;
 
   for (uint8_t pin = firstPin; pin <= lastPin; pin++) {
     EventType t = getEventTypeForPin(pin);
@@ -56,7 +64,10 @@ void Input::update() {
       event.type = t;
       event.pin = pin;
     }
-    // dismiss multiple inputs ??
+    if (t == LONG_PRESS_HOLD || t == LONG_PRESS_STOP) {
+      event.duration = millis() - lastDebounceTime[pin];
+    }
+    // TODO: how to handle multiple inputs at the same time?
   }
 
   if (event.type != NOTHING) {
@@ -78,7 +89,12 @@ Command Input::getCommand() {
         case 18:
           return DOWN;
         case 19:
-          return STOP;
+          return STOP_ADD_5;
+      }
+    case LONG_PRESS_START:
+      switch (event.pin) {
+        case 19:
+          return NAP;
       }
     default:
       return NONE;

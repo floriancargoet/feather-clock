@@ -3,7 +3,11 @@ const { execSync } = require("child_process");
 
 const BOARD_FQBN = "adafruit:samd:adafruit_feather_m0";
 
-// 1 - Find board
+// 1 - Compile, keep stdout in terminal
+console.log("🚧 Compiling…");
+execSync(`arduino-cli compile --fqbn ${BOARD_FQBN} .`, { stdio: "inherit" });
+
+// 2 - Find board
 console.log("👀 Scanning for boards…");
 const ports = JSON.parse(execSync("arduino-cli board list --format json"));
 const port = ports.find(p => p.boards && p.boards.find(b => b.FQBN === BOARD_FQBN));
@@ -15,10 +19,6 @@ if (!port) {
 else {
     console.log(`✅ Board found: ${port.boards[0].name} on ${port.address}`);
 }
-
-// 2 - Compile, keep stdout in terminal
-console.log("🚧 Compiling…");
-execSync(`arduino-cli compile --fqbn ${BOARD_FQBN} .`, { stdio: "inherit" });
 
 // 3 - Kill current serial connection
 try {
