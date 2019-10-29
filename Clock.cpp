@@ -47,6 +47,9 @@ void Clock::initFlashSettings() {
   if (!settings.valid) {
     // settings have never been written to flash, initialize settings
     settings = Settings();
+    settings.alarm1.enabled = true;
+    settings.alarm1.hour = 18;
+    settings.alarm1.minute = 28;
     flash_settings.write(settings);
   }
 }
@@ -145,6 +148,9 @@ void Clock::checkAlarm(Alarm a, State ALARM_X, bool &stoppedFlag) {
   DateTime now = rtc.now();
   uint8_t hour = now.hour();
   uint8_t minute = now.minute();
+  uint8_t dow = now.dayOfTheWeek();
+  bool isWeekEnd = dow == 0 || dow == 6;
+
   // If the song stopped itself, set the flag
   if (state == ALARM_X && !stoppedFlag && player.stopped()) {
     Serial.println("Track ended, stopping alarm");
@@ -158,10 +164,11 @@ void Clock::checkAlarm(Alarm a, State ALARM_X, bool &stoppedFlag) {
     stoppedFlag = false;
   }
   if (
-    a.enabled && // TODO: week-end check
-    !stoppedFlag &&
-    state != ALARM_X &&
-    a.hour == hour &&
+    a.enabled &&                 // is the alarm enabled
+    (a.weekend || !isWeekEnd) && // is it a week day or is the alarm enabled on week-ends
+    !stoppedFlag &&              // has the alarm been stopped today
+    state != ALARM_X &&          // is it not already ringing
+    a.hour == hour &&            // does it matches the current time
     a.minute == minute
   ) {
     state = ALARM_X;
@@ -407,6 +414,10 @@ State Clock::transition(State s, Command c) {
       }
       break;
     case DISPLAY_DATE:
+      // auto exit after 10 sec without any button press
+      if (noInputDuringMS(10000)) {
+        next = DISPLAY_TIME;
+      }
       if (c == MODE) {
         next = DISPLAY_ALARM_1;
       }
@@ -468,6 +479,10 @@ State Clock::transition(State s, Command c) {
       }
       break;
     case DISPLAY_ALARM_1:
+      // auto exit after 10 sec without any button press
+      if (noInputDuringMS(10000)) {
+        next = DISPLAY_TIME;
+      }
       if (c == MODE) {
         next = DISPLAY_ALARM_2;
       }
@@ -552,6 +567,10 @@ State Clock::transition(State s, Command c) {
       }
       break;
     case DISPLAY_ALARM_2:
+      // auto exit after 10 sec without any button press
+      if (noInputDuringMS(10000)) {
+        next = DISPLAY_TIME;
+      }
       if (c == MODE) {
         next = DISPLAY_TIME;
       }

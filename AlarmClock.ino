@@ -3,7 +3,7 @@
 /*
  * TODO v1:
  * - nap mode
- * - week-end when triggering alarms
+ * - long press
  *
  * TODO v2:
  * - brightness control? photoresistor?
@@ -14,6 +14,7 @@
  * - alarm track overlaps over alarm
  * - alarm track > 24h
  * - nap + alarms
+ * - multiple buttons at once
  */
 static Clock clock;
 

@@ -26,7 +26,7 @@ class Settings {
     bool valid = true; // will be false if read from empty flash
     Alarm alarm1;
     Alarm alarm2;
-    int volume = 50; // [0-99]
+    int volume = 70; // [0-99]
 };
 
 class Clock {
