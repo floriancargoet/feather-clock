@@ -4,6 +4,14 @@ static const uint8_t daysInMonth [] = { 31,28,31,30,31,30,31,31,30,31,30,31 };
 
 FlashStorage(flash_settings, Settings);
 
+uint8_t incr(uint8_t n, uint8_t modulo) {
+  return (n + 1) % modulo;
+}
+
+uint8_t decr(uint8_t n, uint8_t modulo) {
+  return (n + modulo - 1) % modulo;
+}
+
 void Clock::die(char* msg, uint8_t errCode) {
    Serial.println(msg);
    display.printErr(errCode);
@@ -114,8 +122,9 @@ void Clock::applyVolume() {
 }
 
 void Clock::playButtonBeep() {
-  player.stopPlaying();
-  player.startPlayingFile(TRACK_BUTTON_PRESS);
+  if (player.stopped()) {
+    player.startPlayingFile(TRACK_BUTTON_PRESS);
+  }
 }
 
 String Clock::getAlarmFileName(uint8_t track) {
@@ -402,6 +411,9 @@ void Clock::render() {
       display.setBlinking(BLINK_DOTS | BLINK_DIGIT_1 | BLINK_DIGIT_2 | BLINK_DIGIT_3 | BLINK_DIGIT_4);
       display.printTime(0, 0);
       break;
+    case DARK_MODE:
+      // print nothing
+      break;
   }
 
   display.flush();
@@ -419,17 +431,17 @@ State Clock::transition(State s, Command c) {
         writeSettings();
         next = DISPLAY_TIME;
       }
-      // auto exit after 3 sec without any button press
-      if (noInputDuringMS(3000)) {
+      // auto exit after delay without any button press
+      if (noInputDuringMS(EXIT_VOLUME_DELAY)) {
         writeSettings();
         next = DISPLAY_TIME;
       }
       if (c == UP) {
-        settings.volume = (settings.volume + 1) % 100;
+        settings.volume = incr(settings.volume, 100);
         applyVolume();
       }
       if (c == DOWN) {
-        settings.volume = (settings.volume + 99) % 100; // add 99 to ensure positive result
+        settings.volume = decr(settings.volume, 100);
         applyVolume();
       }
       break;
@@ -448,6 +460,9 @@ State Clock::transition(State s, Command c) {
         next = DISPLAY_NAP_INTRO;
         napTS = TimeSpan(NAP_INCREMENT);
       }
+      if (noInputDuringMS(DARK_MODE_DELAY)) {
+        next = DARK_MODE;
+      }
       break;
     case SET_HOURS:
       if (c == MODE) {
@@ -458,10 +473,10 @@ State Clock::transition(State s, Command c) {
         next = SET_MINUTES;
       }
       if (c == UP) {
-        hour = (hour + 1) % 24;
+        hour = incr(hour, 24);
       }
       if (c == DOWN) {
-        hour = (hour + 23) % 24; // add 23 to ensure positive result
+        hour = decr(hour, 24);
       }
       break;
     case SET_MINUTES:
@@ -474,15 +489,15 @@ State Clock::transition(State s, Command c) {
         writeTime();
       }
       if (c == UP) {
-        minute = (minute + 1) % 60;
+        minute = incr(minute, 60);
       }
       if (c == DOWN) {
-        minute = (minute + 59) % 60; // add 59 to ensure positive result
+        minute = decr(minute, 60);
       }
       break;
     case DISPLAY_DATE:
-      // auto exit after 10 sec without any button press
-      if (noInputDuringMS(10000)) {
+      // auto exit after delay without any button press
+      if (noInputDuringMS(EXIT_MENU_DELAY)) {
         next = DISPLAY_TIME;
       }
       if (c == MODE) {
@@ -507,10 +522,10 @@ State Clock::transition(State s, Command c) {
         daysInCurrentMonth++;
       }
       if (c == UP) {
-        day = (day + 1) % daysInCurrentMonth;
+        day = incr(day, daysInCurrentMonth);
       }
       if (c == DOWN) {
-        day = (day + daysInCurrentMonth - 1) % daysInCurrentMonth;
+        day = decr(day, daysInCurrentMonth);
       }
       break;
     }
@@ -523,10 +538,10 @@ State Clock::transition(State s, Command c) {
         next = SET_YEAR;
       }
       if (c == UP) {
-        month = (month + 1) % 12;
+        month = incr(month, 12);
       }
       if (c == DOWN) {
-        month = (month + 11) % 12; // add 99 to ensure positive result
+        month = decr(month, 12);
       }
       break;
     case SET_YEAR:
@@ -539,15 +554,15 @@ State Clock::transition(State s, Command c) {
         writeDate();
       }
       if (c == UP) {
-        year = (year + 1) % 100;
+        year = incr(year, 100);
       }
       if (c == DOWN) {
-        year = (year + 99) % 100; // add 99 to ensure positive result
+        year = decr(year, 100);
       }
       break;
     case DISPLAY_ALARM_1:
-      // auto exit after 10 sec without any button press
-      if (noInputDuringMS(10000)) {
+      // auto exit after delay without any button press
+      if (noInputDuringMS(EXIT_MENU_DELAY)) {
         next = DISPLAY_TIME;
       }
       if (c == MODE) {
@@ -578,10 +593,10 @@ State Clock::transition(State s, Command c) {
         next = SET_MINUTES_1;
       }
       if (c == UP) {
-        settings.alarm1.hour = (settings.alarm1.hour + 1) % 24;
+        settings.alarm1.hour = incr(settings.alarm1.hour, 24);
       }
       if (c == DOWN) {
-        settings.alarm1.hour = (settings.alarm1.hour + 23) % 24; // add 23 to ensure positive result
+        settings.alarm1.hour = decr(settings.alarm1.hour, 24);
       }
       break;
     case SET_MINUTES_1:
@@ -593,10 +608,10 @@ State Clock::transition(State s, Command c) {
         next = SET_WEEKEND_1;
       }
       if (c == UP) {
-        settings.alarm1.minute = (settings.alarm1.minute + 1) % 60;
+        settings.alarm1.minute = incr(settings.alarm1.minute, 60);
       }
       if (c == DOWN) {
-        settings.alarm1.minute = (settings.alarm1.minute + 59) % 60; // add 59 to ensure positive result
+        settings.alarm1.minute = decr(settings.alarm1.minute, 60);
       }
       break;
     case SET_WEEKEND_1:
@@ -623,19 +638,19 @@ State Clock::transition(State s, Command c) {
         next = DISPLAY_ALARM_1;
       }
       if (c == UP) {
-        settings.alarm1.track = (settings.alarm1.track + 1) % alarmTrackCount;
+        settings.alarm1.track = incr(settings.alarm1.track, alarmTrackCount);
         // preview
-        playAlarm(settings.alarm2.track);
+        playAlarm(settings.alarm1.track);
       }
       if (c == DOWN) {
-        settings.alarm1.track = (settings.alarm1.track + (alarmTrackCount - 1)) % alarmTrackCount; // add 8 to ensure positive result
+        settings.alarm1.track = decr(settings.alarm1.track, alarmTrackCount);
         // preview
-        playAlarm(settings.alarm2.track);
+        playAlarm(settings.alarm1.track);
       }
       break;
     case DISPLAY_ALARM_2:
-      // auto exit after 10 sec without any button press
-      if (noInputDuringMS(10000)) {
+      // auto exit after delay without any button press
+      if (noInputDuringMS(EXIT_MENU_DELAY)) {
         next = DISPLAY_TIME;
       }
       if (c == MODE) {
@@ -666,10 +681,10 @@ State Clock::transition(State s, Command c) {
         next = SET_MINUTES_2;
       }
       if (c == UP) {
-        settings.alarm2.hour = (settings.alarm2.hour + 1) % 24;
+        settings.alarm2.hour = incr(settings.alarm2.hour, 24);
       }
       if (c == DOWN) {
-        settings.alarm2.hour = (settings.alarm2.hour + 23) % 24; // add 23 to ensure positive result
+        settings.alarm2.hour = decr(settings.alarm2.hour, 24);
       }
       break;
     case SET_MINUTES_2:
@@ -681,10 +696,10 @@ State Clock::transition(State s, Command c) {
         next = SET_WEEKEND_2;
       }
       if (c == UP) {
-        settings.alarm2.minute = (settings.alarm2.minute + 1) % 60;
+        settings.alarm2.minute = incr(settings.alarm2.minute, 60);
       }
       if (c == DOWN) {
-        settings.alarm2.minute = (settings.alarm2.minute + 59) % 60; // add 59 to ensure positive result
+        settings.alarm2.minute = decr(settings.alarm2.minute, 60);
       }
       break;
     case SET_WEEKEND_2:
@@ -711,12 +726,12 @@ State Clock::transition(State s, Command c) {
         next = DISPLAY_ALARM_2;
       }
       if (c == UP) {
-        settings.alarm2.track = (settings.alarm2.track + 1) % alarmTrackCount;
+        settings.alarm2.track = incr(settings.alarm2.track, alarmTrackCount);
         // preview
         playAlarm(settings.alarm2.track);
       }
       if (c == DOWN) {
-        settings.alarm2.track = (settings.alarm2.track + (alarmTrackCount - 1)) % alarmTrackCount; // add 8 to ensure positive result
+        settings.alarm2.track = decr(settings.alarm2.track, alarmTrackCount);
         // preview
         playAlarm(settings.alarm2.track);
       }
@@ -771,6 +786,11 @@ State Clock::transition(State s, Command c) {
         if ((napTime - now).totalseconds() >= 100 * 60) {
           napTime = now + TimeSpan(99 * 60 + 59);
         }
+      }
+      break;
+    case DARK_MODE:
+      if (c != NONE) {
+        next = DISPLAY_TIME;
       }
       break;
     default:

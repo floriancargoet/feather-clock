@@ -26,7 +26,7 @@ class Settings {
     bool valid = true; // will be false if read from empty flash
     Alarm alarm1;
     Alarm alarm2;
-    int volume = 70; // [0-99]
+    uint8_t volume = 70; // [0-99]
 };
 
 class Clock {
@@ -43,7 +43,7 @@ class Clock {
 
     // Time settings
     // we work on local copies when settings the time or date
-    int year;
+    uint8_t year;
     uint8_t month;
     uint8_t day;
     uint8_t hour;

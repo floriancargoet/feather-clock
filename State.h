@@ -27,7 +27,8 @@ typedef enum  {
     RINGING_NAP,
     DISPLAY_NAP_INTRO,
     SET_NAP,
-    DISPLAY_NAP
+    DISPLAY_NAP,
+    DARK_MODE
 } State;
 
 #endif

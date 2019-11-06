@@ -31,11 +31,14 @@
 #define LETTER_r       0b1010000
 #define LETTER_t       0b1111000
 
+#define EXIT_VOLUME_DELAY   3000
+#define EXIT_MENU_DELAY    10000
 #define BLINK_DELAY          300
 #define LONG_PRESS_DELAY    2000
 #define NAP_INCREMENT        600
 #define NAP_INTRO_DELAY     2000
 #define NAP_SET_DELAY       5000
+#define DARK_MODE_DELAY    60000
 
 // VS1053
 // DREQ should be an Int pin *if possible* (not possible on 32u4)
