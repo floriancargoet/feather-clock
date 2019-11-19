@@ -43,7 +43,7 @@ void Clock::init() {
 
 void Clock::initDisplay() {
   display.begin(0x70); // Sometimes code hangs here after a reset. The Display is not resetted correctly
-  display.setBrightness(0);
+  display.setBrightness(0); // 0-15
   display.printBoot();
   display.flush();
 }
@@ -65,8 +65,9 @@ void Clock::initFlashSettings() {
     // settings have never been written to flash, initialize settings
     settings = Settings();
     settings.alarm1.enabled = true;
-    settings.alarm1.hour = 18;
-    settings.alarm1.minute = 28;
+    settings.alarm1.hour = 7;
+    settings.alarm1.minute = 0;
+    settings.alarm1.weekend = false;
     flash_settings.write(settings);
   }
 }

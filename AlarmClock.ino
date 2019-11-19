@@ -2,7 +2,7 @@
 
 /*
  * TODO v1:
- * - ?
+ * - brightness based on hour of the day
  *
  * TODO v2:
  * - brightness control? photoresistor?
