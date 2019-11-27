@@ -1,11 +1,16 @@
 #include "Input.h"
 
-const uint8_t firstPin = 15;
-const uint8_t lastPin = 19;
+const uint8_t pins[] = {
+  BUTTON_TOP_PIN,
+  BUTTON_UP_PIN,
+  BUTTON_DOWN_PIN,
+  BUTTON_LEFT_PIN,
+  BUTTON_RIGHT_PIN
+};
 
 void Input::begin() {
-
-  for (uint8_t pin = firstPin; pin <= lastPin; pin++) {
+  for (uint8_t pinIndex = 0; pinIndex <= sizeof(pins); pinIndex++) {
+    uint8_t pin = pins[pinIndex];
     pinMode(pin, INPUT_PULLUP);
     lastRealState[pin] = debouncedState[pin] = HIGH;
   }
@@ -58,7 +63,8 @@ void Input::update() {
   event.pin = -1;
   event.duration = 0;
 
-  for (uint8_t pin = firstPin; pin <= lastPin; pin++) {
+  for (uint8_t pinIndex = 0; pinIndex <= sizeof(pins); pinIndex++) {
+    uint8_t pin = pins[pinIndex];
     EventType t = getEventTypeForPin(pin);
     if (t != NOTHING) {
       event.type = t;
@@ -80,20 +86,20 @@ Command Input::getCommand() {
   switch (event.type) {
     case CLICKED:
       switch (event.pin) {
-        case 15:
+        case BUTTON_LEFT_PIN:
           return MODE;
-        case 16:
+        case BUTTON_RIGHT_PIN:
           return SET;
-        case 17:
+        case BUTTON_UP_PIN:
           return UP;
-        case 18:
+        case BUTTON_DOWN_PIN:
           return DOWN;
-        case 19:
+        case BUTTON_TOP_PIN:
           return STOP_ADD_5;
       }
     case LONG_PRESS_START:
       switch (event.pin) {
-        case 19:
+        case BUTTON_TOP_PIN:
           return NAP;
       }
     default:

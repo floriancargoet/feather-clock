@@ -26,7 +26,7 @@ class Settings {
     bool valid = true; // will be false if read from empty flash
     Alarm alarm1;
     Alarm alarm2;
-    uint8_t volume = 50; // [0-99]
+    uint8_t volume = 60; // [0-99]
 };
 
 class Clock {

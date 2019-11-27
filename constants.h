@@ -40,19 +40,30 @@
 #define NAP_SET_DELAY       5000
 #define DARK_MODE_DELAY    60000
 
+/********
+ * PINS *
+ ********/
+
 // VS1053
 // DREQ should be an Int pin *if possible* (not possible on 32u4)
-#define VS1053_DREQ     9     // VS1053 Data request, ideally an Interrupt pin
-#define VS1053_RESET   -1     // VS1053 reset pin (not used!)
-#define VS1053_CS       6     // VS1053 chip select pin (output)
-#define VS1053_DCS     10     // VS1053 Data/command select pin (output)
+#define VS1053_DREQ       9     // VS1053 Data request, ideally an Interrupt pin
+#define VS1053_RESET     -1     // VS1053 reset pin (not used!)
+#define VS1053_CS         6     // VS1053 chip select pin (output)
+#define VS1053_DCS       10     // VS1053 Data/command select pin (output)
 
 // SD
-#define CARD_CS         5     // Card chip select pin
-#define ALT_CARD_CS     4
-#define ALT_CARD_DETECT 7
+#define CARD_CS           5     // Card chip select pin
+#define ALT_CARD_CS       4
+#define ALT_CARD_DETECT   7
+
+// Buttons
+#define BUTTON_TOP_PIN   19
+#define BUTTON_UP_PIN    16
+#define BUTTON_DOWN_PIN  17
+#define BUTTON_LEFT_PIN  15
+#define BUTTON_RIGHT_PIN 18
 
 // Other
-#define POWER_LED      13
+#define POWER_LED        13
 
 #endif
