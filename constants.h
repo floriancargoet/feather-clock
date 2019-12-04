@@ -37,7 +37,7 @@
 #define LONG_PRESS_DELAY    2000
 #define NAP_INCREMENT        600
 #define NAP_INTRO_DELAY     2000
-#define NAP_SET_DELAY       5000
+#define NAP_SET_DELAY       3000
 #define DARK_MODE_DELAY    60000
 
 /********
